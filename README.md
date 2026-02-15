@@ -37,7 +37,7 @@ Small XFCE tray widget for tracking calories.
 
 ## Install
 ```bash
-git clone <your-repo-url> calorieCounter
+git clone https://github.com/arch-Ada/calorieCounter.git calorieCounter
 cd calorieCounter
 sudo apt install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0
 python3 calorie_widget.py
