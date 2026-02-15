@@ -35,6 +35,12 @@ Small XFCE tray widget for tracking calories.
 - Only one app instance is allowed; a second launch exits and logs an error.
 - State saves are atomic to reduce corruption risk on interruption.
 
+
+## Dependencies (Debian/XFCE)
+```bash
+sudo apt install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0
+```
+
 ## Install
 ```bash
 git clone https://github.com/arch-Ada/calorieCounter.git calorieCounter
@@ -66,10 +72,8 @@ Type=Application
 Name=calorieCounter
 Exec=python3 [...path/to/calorieCounter/]calorie_widget.py
 X-GNOME-Autostart-enabled=true
-
-## Dependencies (Debian/XFCE)
-```bash
-sudo apt install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0
+Terminal=false
+EOF
 ```
 
 ## Architecture
@@ -117,6 +121,4 @@ sudo apt install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0
 ## Changelog
 - See `CHANGELOG.md`.
 
-Terminal=false
-EOF
 ```
