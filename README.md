@@ -120,5 +120,3 @@ EOF
 
 ## Changelog
 - See `CHANGELOG.md`.
-
-```
