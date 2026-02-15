@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## v1.0.0 - 2026-02-15
+## v1.0.0 - 2026-02-15 (actually over the last couple days.)
 - Added persistent state and single-instance lock handling.
 - Added session click logging with automatic 7-day pruning.
 - Added weekly overview with net-per-day summary and event graph.
