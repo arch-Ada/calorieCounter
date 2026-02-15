@@ -48,6 +48,25 @@ python3 calorie_widget.py
 python3 [...path/to/calorieCounter/]calorie_widget.py
 ```
 
+## Start on login (XFCE)
+Use one of these:
+
+1. GUI method:
+- Open `Settings` -> `Session and Startup` -> `Application Autostart`
+- Click `Add`
+- Name: `calorieCounter`
+- Command: `python3 [...path/to/calorieCounter/]calorie_widget.py`
+
+2. Manual `.desktop` file:
+```bash
+mkdir -p ~/.config/autostart
+cat > ~/.config/autostart/calorieCounter.desktop <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=calorieCounter
+Exec=python3 [...path/to/calorieCounter/]calorie_widget.py
+X-GNOME-Autostart-enabled=true
+
 ## Dependencies (Debian/XFCE)
 ```bash
 sudo apt install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0
@@ -98,24 +117,6 @@ sudo apt install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0
 ## Changelog
 - See `CHANGELOG.md`.
 
-## Start on login (XFCE)
-Use one of these:
-
-1. GUI method:
-- Open `Settings` -> `Session and Startup` -> `Application Autostart`
-- Click `Add`
-- Name: `calorieCounter`
-- Command: `python3 [...path/to/calorieCounter/]calorie_widget.py`
-
-2. Manual `.desktop` file:
-```bash
-mkdir -p ~/.config/autostart
-cat > ~/.config/autostart/calorieCounter.desktop <<'EOF'
-[Desktop Entry]
-Type=Application
-Name=calorieCounter
-Exec=python3 [...path/to/calorieCounter/]calorie_widget.py
-X-GNOME-Autostart-enabled=true
 Terminal=false
 EOF
 ```
