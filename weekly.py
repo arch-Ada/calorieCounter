@@ -58,13 +58,19 @@ def build_last_week_summary(storage):
     daily_bars = []
     total_net = 0
     days_count = 0
-    any_tracking = first_session_event_ts is not None
+    if first_session_event_ts is None:
+        lines.append('')
+        lines.append('No tracked data in the last 7 days.')
+        return {
+            'text': '\n'.join(lines),
+            'daily_bars': daily_bars,
+            'average_net': None,
+        }
+
     for offset in range(7):
         day = start_day.fromordinal(start_day.toordinal() + offset)
         day_key = day.isoformat()
         if day < tracked_start_day:
-            continue
-        if not any_tracking:
             continue
         day_net = totals_net.get(day_key, 0)
         total_net += day_net
@@ -82,13 +88,12 @@ def build_last_week_summary(storage):
             lines.append(f'{day_key} ({day.strftime("%a")}): no data')
 
     lines.append('')
-    if days_count == 0:
-        lines.append('No tracked data in the last 7 days.')
-    else:
-        lines.append(f'Tracked-period net: {total_net:+d} kcal')
-        lines.append(f'Tracked-period average net: {total_net / float(days_count):+.1f} kcal/day')
+    average_net = total_net / float(days_count)
+    lines.append(f'Tracked-period net: {total_net:+d} kcal')
+    lines.append(f'Tracked-period average net: {average_net:+.1f} kcal/day')
 
     return {
         'text': '\n'.join(lines),
         'daily_bars': daily_bars,
+        'average_net': average_net,
     }

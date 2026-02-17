@@ -27,11 +27,13 @@ Small XFCE tray widget for tracking calories.
   - The dialog also shows current active-session calories at the top.
   - One bar is shown per tracked day.
   - Bar height represents that day's net kcal.
+  - A cyan horizontal line shows the tracked-period average net kcal/day.
 - Value persists across app restarts and PC reboots.
 - `View Log` shows detailed events from the active 7-day log.
 - `View Archive` shows archived events in the same human-readable format as `View Log`.
 - `Clear Log` clears the active log after confirmation.
 - `Clear Archive` clears archived entries after confirmation.
+- If a log write or archive-clear operation fails, the app shows an error dialog.
 - Only one app instance is allowed; a second launch exits and logs an error.
 - State saves are atomic to reduce corruption risk on interruption.
 
@@ -85,13 +87,13 @@ EOF
   - Single-instance file lock handling.
   - Atomic file-write helpers.
 - `weekly.py`
-  - Builds the "Last 7 Days" summary text and per-day bar data from log events.
+  - Builds the "Last 7 Days" summary text, tracked-period average, and per-day bar data from log events.
 
 ### Data flow
 1. User action (click/menu) is handled in `calorie_widget.py`.
 2. Event/state changes are written through `CalorieStorage` in `storage.py`.
 3. Weekly view requests summary data from `weekly.py`, which reads recent events via storage.
-4. UI renders summary text + rainbow bar chart in `calorie_widget.py`.
+4. UI renders summary text + rainbow bar chart + average line in `calorie_widget.py`.
 
 ## Persistence files
 - Current value:

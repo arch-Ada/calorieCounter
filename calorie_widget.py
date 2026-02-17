@@ -14,7 +14,7 @@ from storage import CalorieStorage
 from weekly import build_last_week_summary as build_weekly_summary
 
 class CalorieTray:
-    """GTK tray widget for tracking calories with a single event log."""
+    """GTK tray widget for tracking calories with active and archived logs."""
 
     DEFAULT_LEFT_CLICK_AMOUNT = 50
     DEFAULT_RIGHT_CLICK_AMOUNT = 10
@@ -36,12 +36,7 @@ class CalorieTray:
             default_right_click_amount=self.DEFAULT_RIGHT_CLICK_AMOUNT,
         )
         if state_needs_persist:
-            self.storage.save_state(
-                self.calories,
-                self.left_click_amount,
-                self.right_click_amount,
-                self.session_start,
-            )
+            self.persist_state()
         self.storage.prune_session_log()
         self.storage.ensure_initial_log_entry(self.session_start, self.calories)
 
@@ -189,16 +184,44 @@ class CalorieTray:
         self.menu_icon.set_from_pixbuf(self.render_menu_icon())
         self.menu_icon.set_tooltip_text('Menu')
 
-    def on_left_click(self, _icon):
-        """Add calories on main-icon left click and persist state."""
-        self.calories += self.left_click_amount
-        self.storage.append_session_event(self.left_click_amount, self.calories, 'add')
+    def persist_state(self):
+        """Persist current runtime state values."""
         self.storage.save_state(
             self.calories,
             self.left_click_amount,
             self.right_click_amount,
             self.session_start,
         )
+
+    def confirm_action(self, title, secondary_text, action_label):
+        """Show a warning confirmation dialog and return True on accept."""
+        confirm = Gtk.MessageDialog(
+            None,
+            Gtk.DialogFlags.MODAL,
+            Gtk.MessageType.WARNING,
+            Gtk.ButtonsType.NONE,
+            title,
+        )
+        confirm.format_secondary_text(secondary_text)
+        confirm.add_buttons(
+            Gtk.STOCK_CANCEL,
+            Gtk.ResponseType.CANCEL,
+            action_label,
+            Gtk.ResponseType.OK,
+        )
+        response = confirm.run()
+        confirm.destroy()
+        return response == Gtk.ResponseType.OK
+
+    def on_left_click(self, _icon):
+        """Add calories on main-icon left click and persist state."""
+        self.calories += self.left_click_amount
+        if not self.storage.append_session_event(self.left_click_amount, self.calories, 'add'):
+            self.show_error_dialog(
+                'Log Write Failed',
+                'Could not append to log. Current value was still updated.',
+            )
+        self.persist_state()
         self.refresh_icon()
 
     def on_right_click(self, _icon, _button, _event_time):
@@ -207,13 +230,12 @@ class CalorieTray:
         self.calories = max(0, self.calories - self.right_click_amount)
         actual_subtract = before - self.calories
         if actual_subtract > 0:
-            self.storage.append_session_event(-actual_subtract, self.calories, 'subtract')
-        self.storage.save_state(
-            self.calories,
-            self.left_click_amount,
-            self.right_click_amount,
-            self.session_start,
-        )
+            if not self.storage.append_session_event(-actual_subtract, self.calories, 'subtract'):
+                self.show_error_dialog(
+                    'Log Write Failed',
+                    'Could not append to log. Current value was still updated.',
+                )
+        self.persist_state()
         self.refresh_icon()
 
     def show_menu(self, icon=None, button=0, event_time=None):
@@ -241,12 +263,7 @@ class CalorieTray:
             return
         self.calories = 0
         self.session_start = reset_time
-        self.storage.save_state(
-            self.calories,
-            self.left_click_amount,
-            self.right_click_amount,
-            self.session_start,
-        )
+        self.persist_state()
         self.refresh_icon()
 
     def on_view_log(self, _item):
@@ -264,54 +281,29 @@ class CalorieTray:
 
     def on_clear_log(self, _item):
         """Ask for confirmation, then clear the click-event log."""
-        confirm = Gtk.MessageDialog(
-            None,
-            Gtk.DialogFlags.MODAL,
-            Gtk.MessageType.WARNING,
-            Gtk.ButtonsType.NONE,
+        if not self.confirm_action(
             'Clear entire log?',
-        )
-        confirm.format_secondary_text('This will permanently remove retained click events.')
-        confirm.add_buttons(
-            Gtk.STOCK_CANCEL,
-            Gtk.ResponseType.CANCEL,
+            'This will permanently remove retained click events.',
             'Clear Log',
-            Gtk.ResponseType.OK,
-        )
-        response = confirm.run()
-        confirm.destroy()
-        if response != Gtk.ResponseType.OK:
+        ):
             return
         if self.storage.clear_log():
             self.session_start = datetime.now(timezone.utc).astimezone()
-            self.storage.save_state(
-                self.calories,
-                self.left_click_amount,
-                self.right_click_amount,
-                self.session_start,
-            )
+            self.persist_state()
 
     def on_clear_archive(self, _item):
         """Ask for confirmation, then clear the archived log file."""
-        confirm = Gtk.MessageDialog(
-            None,
-            Gtk.DialogFlags.MODAL,
-            Gtk.MessageType.WARNING,
-            Gtk.ButtonsType.NONE,
+        if not self.confirm_action(
             'Clear archived log?',
-        )
-        confirm.format_secondary_text('This permanently removes all archived log entries.')
-        confirm.add_buttons(
-            Gtk.STOCK_CANCEL,
-            Gtk.ResponseType.CANCEL,
+            'This permanently removes all archived log entries.',
             'Clear Archive',
-            Gtk.ResponseType.OK,
-        )
-        response = confirm.run()
-        confirm.destroy()
-        if response != Gtk.ResponseType.OK:
+        ):
             return
-        self.storage.clear_archive_log()
+        if not self.storage.clear_archive_log():
+            self.show_error_dialog(
+                'Clear Archive Failed',
+                'Could not clear archived log entries.',
+            )
 
     def on_view_archive(self, _item):
         """Display archived log entries in a scrollable dialog."""
@@ -361,12 +353,7 @@ class CalorieTray:
         if response == Gtk.ResponseType.OK:
             self.left_click_amount = int(left_input.get_value())
             self.right_click_amount = int(right_input.get_value())
-            self.storage.save_state(
-                self.calories,
-                self.left_click_amount,
-                self.right_click_amount,
-                self.session_start,
-            )
+            self.persist_state()
             self.refresh_icon()
         dialog.destroy()
 
@@ -438,10 +425,11 @@ class CalorieTray:
             'draw',
             self.draw_last_week_graph,
             summary['daily_bars'],
+            summary.get('average_net'),
         )
         outer.pack_start(drawing_area, False, False, 0)
 
-        legend = Gtk.Label(label='Rainbow bars = net calories per tracked day')
+        legend = Gtk.Label(label='Rainbow bars = net calories per tracked day | cyan line = average')
         legend.set_halign(Gtk.Align.START)
         outer.pack_start(legend, False, False, 0)
 
@@ -463,7 +451,7 @@ class CalorieTray:
         dialog.run()
         dialog.destroy()
 
-    def draw_last_week_graph(self, widget, cr, daily_bars):
+    def draw_last_week_graph(self, widget, cr, daily_bars, average_net):
         """Draw per-day net calories as rainbow vertical bars."""
         allocation = widget.get_allocation()
         width = allocation.width
@@ -509,6 +497,8 @@ class CalorieTray:
                 values_for_scale.append(int(item.get('net', 0)))
             except (TypeError, ValueError):
                 values_for_scale.append(0)
+        if average_net is not None:
+            values_for_scale.append(float(average_net))
 
         min_y = min(0, min(values_for_scale))
         max_y = max(values_for_scale)
@@ -526,6 +516,22 @@ class CalorieTray:
         cr.move_to(left, zero_y)
         cr.line_to(left + plot_width, zero_y)
         cr.stroke()
+
+        if average_net is not None:
+            avg_y = y_for(float(average_net))
+            cr.set_source_rgb(0.20, 0.85, 0.90)
+            cr.set_line_width(1.2)
+            cr.move_to(left, avg_y)
+            cr.line_to(left + plot_width, avg_y)
+            cr.stroke()
+
+            cr.set_source_rgb(0.20, 0.85, 0.90)
+            avg_label = f'avg {float(average_net):+.1f}'
+            ext = cr.text_extents(avg_label)
+            lx = left + plot_width - ext.width - 4
+            ly = max(top + 10, min(top + plot_height - 4, avg_y - 2))
+            cr.move_to(lx, ly)
+            cr.show_text(avg_label)
 
         rainbow = [
             (0.90, 0.20, 0.20),
